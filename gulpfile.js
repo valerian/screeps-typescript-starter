@@ -10,9 +10,9 @@ const PluginError = require('gulp-util').PluginError;
 const ts = require('gulp-typescript');
 const tsconfigGlob = require('tsconfig-glob');
 const tslint = require('gulp-tslint');
-const tsconfig = ts.createProject('tsconfig.json');
-
 const config = require('./config.json');
+const tsconfig = ts.createProject('tsconfig.json');
+const webpack = require('webpack-stream');
 
 gulp.task('update-tsconfig-files', () => {
   return tsconfigGlob({
@@ -39,10 +39,16 @@ let compileFailed = false;
 
 gulp.task('compile', ['lint', 'clean', 'update-tsconfig-files'], () => {
   compileFailed = false;
-  return tsconfig.src()
-    .pipe(ts(tsconfig))
-    .on('error', (err) => { compileFailed = true; })
-    .js.pipe(gulp.dest('dist'));
+  if (config.bundled) {
+    return gulp.src('src/main.ts')
+      .pipe(webpack( require('./webpack.config.js') ))
+      .pipe(gulp.dest(''));
+  } else {
+    return tsconfig.src()
+      .pipe(ts(tsconfig))
+      .on('error', (err) => { compileFailed = true; })
+      .js.pipe(gulp.dest('dist'));
+  }
 });
 
 gulp.task('checked-compile', ['compile'], () => {
@@ -57,10 +63,14 @@ gulp.task('flatten', ['checked-compile'], () => {
     .pipe(gulp.dest('./dist/flat'))
 });
 
-gulp.task('upload', ['flatten'], () => {
-  return gulp.src('./dist/flat/*.js')
+gulp.task('bundle', ['checked-compile']);
+
+gulp.task('upload', [config.bundled ? 'bundle' : 'flatten'], () => {
+  return gulp.src(config.bundled ?
+                  './dist/main.js' :
+                  './dist/flat/*.js')
     .pipe(gulpRename(path => { path.extname = ''; }))
-    .pipe(gulpScreepsUpload(config.email, config.password, config.branch, 0))
+    .pipe(gulpScreepsUpload(config.email, config.password, config.branch, 1))
 });
 
 gulp.task('watch', () => {

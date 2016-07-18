@@ -30,5 +30,12 @@
     "src/config/config.ts",
     "src/main.ts",
     "src/shared/memoryManager.ts"
-  ]
+  ],
+  "bundles": {
+    "main": {
+      "files": [
+        "./src/main.ts"
+      ]
+    }
+  }
 }
